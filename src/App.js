@@ -5,7 +5,8 @@ import './App.css';
 import Button from '@material-ui/core/Button';
 import Canvas from './components/Canvas';
 
-import { SketchPicker } from 'react-color';
+import {SketchPicker} from 'react-color';
+
 class App extends Component {
 
     constructor(props) {
@@ -23,7 +24,7 @@ class App extends Component {
 
     SelectColor(select) {
         console.log(select.hex);
-        if(!!select)
+        if (!!select)
             this.setState({colorSelect: select.hex});
 
         console.log(this.state.colorSelect)
@@ -41,15 +42,20 @@ class App extends Component {
                         <Button onClick={() => this.setEstado("Bresenham")} variant="raised">Bresenham</Button>
                         <Button onClick={() => this.setEstado("Circle")} variant="raised">Bresenham Circle</Button>
                     </div>
-                    <Canvas
-                        tipo={this.state.selecionado}
-                        color={this.state.colorSelect}
+                    <div style={{display:'flex', width:'100%', justifyContent:'center'}}>
+                        <Canvas
+                            tipo={this.state.selecionado}
+                            transform={this.state.tranform}
+                            color={this.state.colorSelect}
 
-                    />
-                    <SketchPicker
-                        color={this.state.colorSelect}
-                        onChangeComplete={ this.SelectColor.bind(this) }
-                    />;
+                        />
+                        <SketchPicker
+                            className="color-guide"
+                            color={this.state.colorSelect}
+                            onChangeComplete={this.SelectColor.bind(this)}
+                        />;
+                    </div>
+
                 </div>
             </div>
         );
