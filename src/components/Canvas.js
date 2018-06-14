@@ -3,7 +3,16 @@
 import React, {Component} from 'react';
 
 import Button from '@material-ui/core/Button';
+import TextField from '@material-ui/core/TextField';
+
 class Canvas extends Component {
+    state = {
+        xtra: '',
+        ytra: '',
+        rtra: '',
+        stra: '',
+    };
+
     constructor(props) {
         super(props);
         this.onMouseDown = this.onMouseDown.bind(this);
@@ -13,18 +22,30 @@ class Canvas extends Component {
 
     isPainting = false;
     line = [];
+    history = [];
+    atual = [];
+    stateVar = [];
+    initialstate = [];
     prevPos = {offsetX: 0, offsetY: 0};
 
-    pixel(x, y) {
+    pixel(x, y, color) {
         x = Math.round(x);
         y = Math.round(y);
-        this.ctx.fillStyle = this.userStrokeStyle;
+        this.ctx.fillStyle = color;
+        this.stateVar.push({x: x, y: y, color: this.props.color});
         this.ctx.fillRect(x, y, 1, 1);
+    }
+
+    pixelClear(x, y) {
+        x = Math.round(x);
+        y = Math.round(y);
+        this.ctx.clearRect(x, y, 1, 1);
     }
 
     onMouseDown({nativeEvent}) {
         const {offsetX, offsetY} = nativeEvent;
         this.isPainting = true;
+        this.ctx.save();
         this.prevPos = {offsetX, offsetY};
     }
 
@@ -46,17 +67,68 @@ class Canvas extends Component {
     endPaintEvent() {
         if (this.isPainting) {
             this.isPainting = false;
-            this.ctx.save();
+            this.stateVar = [];
+            this.history.push(this.atual);
+            console.log(this.atual);
+            const {x2, y2} = this.atual.curr;
+            let {x1, y1} = this.atual.prev;
+            const dist = Math.round(Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - x2) * (y1 - x2)));
+            if (this.props.tipo === 'DDA') {
+                this.ctx.fillText(
+                    "( " + x1.toFixed(2) + ", " + y1.toFixed(2) + " ) → ( "
+                    + x2.toFixed(2) + ", " + y2.toFixed(2) + " )",
+                    x1 - 50, y1 + 50);
+                this.ctx.font = '12pt Calibri bold';
+                this.ctx.fillText("DDA", 10, 30);
+            } else if (this.props.tipo === 'Bresenham') {
+                this.ctx.fillText(
+                    "( " + x1.toFixed(2) + ", " + y1.toFixed(2) + " ) → ( "
+                    + x2.toFixed(2) + ", " + y2.toFixed(2) + " )",
+                    x1 - 50, y1 + 50);
+
+                this.ctx.font = '12pt Calibri bold';
+                this.ctx.fillText("Bresenham", 10, 30);
+            } else if (this.props.tipo === 'Circle') {
+                this.ctx.fillText("( " + x1.toFixed(2) + ", " + y1.toFixed(2) + " ) - radius: "
+                    + dist.toFixed(2),
+                    x1 - 50, y1 + dist + 50);
+                this.ctx.font = '12pt Calibri bold';
+                this.ctx.fillText("Bresenham Circle", 10, 30);
+            }
         }
     }
 
-    refresh() {
+    clear() {
         this.ctx.clearRect(0, 0, 500, 500);
+    }
+
+    undo() {
+        this.ctx.clearRect(0, 0, 500, 500);
+        this.history.pop();
+
+    }
+
+    refresh() {
+        this.stateVar.forEach((item) => {
+            if (this.initialstate.length === 0 || this.initialstate.find((item2) => {
+                    return item2.x !== item.x && item2.y !== item.y && item2.color !== item.color;
+                })) {
+                this.pixelClear(item.x, item.y);
+            }
+        });
+        this.ctx.fillStyle = this.props.color;
+        // this.ctx.clearRect(0, 0, 500, 500);
     }
 
     paint(prevPos, currPos) {
         const {offsetX, offsetY} = currPos;
         let {offsetX: x, offsetY: y} = prevPos;
+        this.atual = {
+            prev: {x1: x, y1: y},
+            curr: {x2: offsetX, y2: offsetY},
+            tipo: this.props.tipo,
+            color: this.props.color
+        };
         if (this.props.tipo === 'Livre') {
             this.ctx.beginPath();
             this.ctx.strokeStyle = this.props.color;
@@ -67,45 +139,18 @@ class Canvas extends Component {
             this.ctx.closePath();
         } else if (this.props.tipo === 'DDA') {
             this.refresh();
-            this.dda(x, y, offsetX, offsetY);
-            this.ctx.fillText(
-                "( " + x.toFixed(2) + ", " + y.toFixed(2) + " ) → ( "
-                + offsetX.toFixed(2) + ", " + offsetY.toFixed(2) + " )",
-                x - 50, y + 50);
-
-            this.ctx.font = '12pt Calibri bold';
-            this.ctx.fillText("DDA", 10, 30);
+            this.dda(x, y, offsetX, offsetY, this.props.color);
         } else if (this.props.tipo === 'Bresenham') {
             this.refresh();
-            this.bresenham(x, y, offsetX, offsetY);
-
-            this.ctx.fillText(
-                "( " + x.toFixed(2) + ", " + y.toFixed(2) + " ) → ( "
-                + offsetX.toFixed(2) + ", " + offsetY.toFixed(2) + " )",
-                x - 50, y + 50);
-
-            this.ctx.font = '12pt Calibri bold';
-            this.ctx.fillText("Bresenham", 10, 30);
+            this.bresenham(x, y, offsetX, offsetY, this.props.color);
         } else if (this.props.tipo === 'Circle') {
             this.refresh();
             const dist = Math.round(Math.sqrt((x - offsetX) * (x - offsetX) + (y - offsetY) * (y - offsetY)));
-            this.Circle(x, y, dist);
-
-            this.ctx.fillText("( " + x.toFixed(2) + ", " + y.toFixed(2) + " ) - radius: "
-                + dist.toFixed(2),
-                x - 50, y + dist + 50);
-            this.pixel(this.x, this.y);
-            this.pixel(this.x + 1, this.y);
-            this.pixel(this.x - 1, this.y);
-            this.pixel(this.x, this.y + 1);
-            this.pixel(this.x, this.y - 1);
-
-            this.ctx.font = '12pt Calibri bold';
-            this.ctx.fillText("Bresenham Circle", 10, 30);
+            this.Circle(x, y, dist, this.props.color);
         }
     }
 
-    bresenham(x1, y1, x2, y2) {
+    bresenham(x1, y1, x2, y2, color) {
         let dx = x2 - x1;
         let dy = y2 - y1;
         let xincr, yincr;
@@ -128,7 +173,7 @@ class Canvas extends Component {
 
         let x = x1, y = y1;
 
-        this.pixel(x, y);
+        this.pixel(x, y, color);
 
         if (dx > dy) {
             let p = 2 * dy - dx;
@@ -170,7 +215,7 @@ class Canvas extends Component {
         }
     }
 
-    dda(x1, y1, x2, y2) {
+    dda(x1, y1, x2, y2, color) {
         let x = x1;
         let y = y1;
 
@@ -185,29 +230,29 @@ class Canvas extends Component {
         let xincr = dx / passos;
         let yincr = dy / passos;
 
-        this.pixel(Math.round(x), Math.round(y));
+        this.pixel(Math.round(x), Math.round(y), color);
 
         for (let i = 0; i <= passos; i++) {
             x += xincr;
             y += yincr;
 
-            this.pixel(Math.round(x), Math.round(y));
+            this.pixel(Math.round(x), Math.round(y), color);
         }
     }
 
-    Circle(xc, yc, r) {
+    Circle(xc, yc, r, color) {
         let x = 0;
         let y = r;
         let p = 3 - 2 * r;
 
-        this.pixel(xc + x, yc + y);
-        this.pixel(xc - x, yc + y);
-        this.pixel(xc + x, yc - y);
-        this.pixel(xc - x, yc - y);
-        this.pixel(xc + y, yc + x);
-        this.pixel(xc - y, yc + x);
-        this.pixel(xc + y, yc - x);
-        this.pixel(xc - y, yc - x);
+        this.pixel(xc + x, yc + y, color);
+        this.pixel(xc - x, yc + y, color);
+        this.pixel(xc + x, yc - y, color);
+        this.pixel(xc - x, yc - y, color);
+        this.pixel(xc + y, yc + x, color);
+        this.pixel(xc - y, yc + x, color);
+        this.pixel(xc + y, yc - x, color);
+        this.pixel(xc - y, yc - x, color);
 
         while (x < y) {
             if (p < 0) p += 4 * x + 6;
@@ -217,14 +262,14 @@ class Canvas extends Component {
             }
             x++;
 
-            this.pixel(xc + x, yc + y);
-            this.pixel(xc - x, yc + y);
-            this.pixel(xc + x, yc - y);
-            this.pixel(xc - x, yc - y);
-            this.pixel(xc + y, yc + x);
-            this.pixel(xc - y, yc + x);
-            this.pixel(xc + y, yc - x);
-            this.pixel(xc - y, yc - x);
+            this.pixel(xc + x, yc + y, color);
+            this.pixel(xc - x, yc + y, color);
+            this.pixel(xc + x, yc - y, color);
+            this.pixel(xc - x, yc - y, color);
+            this.pixel(xc + y, yc + x, color);
+            this.pixel(xc - y, yc + x, color);
+            this.pixel(xc + y, yc - x, color);
+            this.pixel(xc - y, yc - x, color);
         }
     }
 
@@ -239,57 +284,180 @@ class Canvas extends Component {
         this.ctx.save();
     }
 
-    Translate(object, x, y) {
-        for (let i = 0; i < object.vertexData.length; i++) {
-            object.vertexData[i].x += x;
-            object.vertexData[i].y += y;
-        }
-    }
-
-    Rotate(object, x, y, angle) {
-        for (let i = 0; i < object.vertexData.length; i++) {
-            let _angle = (Math.PI / 180) * angle;
-            let _x, _y;
-            _x = (object.vertexData[i].x - x) * Math.cos(_angle) - (object.vertexData[i].y - y) * Math.sin(_angle) + x;
-            _y = (object.vertexData[i].y - y) * Math.cos(_angle) + (object.vertexData[i].x - x) * Math.sin(_angle) + y;
-
-            object.vertexData[i].x = _x;
-            object.vertexData[i].y = _y;
-        }
-    }
-
-    Scale(object, cx, cy, sx, sy) {
-        for (let i = 0; i < object.vertexData.length; i++) {
-            object.vertexData[i].x = (object.vertexData[i].x - cx) * sx + cx;
-            object.vertexData[i].y = (object.vertexData[i].y - cy) * sy + cy;
-        }
-    }
-
-    Reflect(object, cx, cy, rx, ry) {
-        for (let i = 0; i < object.vertexData.length; i++) {
-            if (rx === true) {
-                object.vertexData[i].x -= cx;
-                object.vertexData[i].x *= -1;
-                object.vertexData[i].x += cx;
-            }
-            if (ry === true) {
-                object.vertexData[i].y -= cy;
-                object.vertexData[i].y *= -1;
-                object.vertexData[i].y += cy;
+    repaint() {
+        for (let i = 0; i < this.history.length; i++) {
+            if (this.history[i].tipo === 'DDA') {
+                this.dda(this.history[i].prev.x1, this.history[i].prev.y1, this.history[i].curr.x2, this.history[i].curr.y2, this.history[i].color);
+            } else if (this.history[i].tipo === 'Bresenham') {
+                this.bresenham(this.history[i].prev.x1, this.history[i].prev.y1, this.history[i].curr.x2, this.history[i].curr.y2, this.history[i].color);
+            } else if (this.history[i].tipo === 'Circle') {
+                const dist = Math.round(Math.sqrt((this.history[i].prev.x1 - this.history[i].curr.x2) * (this.history[i].prev.x1 - this.history[i].curr.x2) + (this.history[i].prev.y1 - this.history[i].curr.y2) * (this.history[i].prev.y1 - this.history[i].curr.y2)));
+                this.Circle(this.history[i].prev.x1, this.history[i].prev.y1, dist, this.history[i].color);
             }
         }
     }
+
+    translate(x, y) {
+        if (x && y) {
+            this.history.forEach((item, index) => {
+                item.prev.x1 = parseInt(item.prev.x1, 10) + parseInt(x, 10);
+                item.prev.y1 = parseInt(item.prev.y1, 10) + parseInt(y, 10);
+                item.curr.x2 = parseInt(item.curr.x2, 10) + parseInt(x, 10);
+                item.curr.y2 = parseInt(item.curr.y2, 10) + parseInt(y, 10);
+            });
+            this.ctx.clearRect(0, 0, 500, 500);
+            this.repaint();
+        }
+    }
+
+    rotate(angle) {
+        let _angle = (Math.PI / 180) * parseInt(angle, 10);
+        console.log(_angle);
+        if (angle) {
+            this.history.forEach((item) => {
+                let cx1, cy1;
+                if (item.tipo !== 'Circle') {
+                    cx1 = (item.prev.x1 + item.curr.x2) / 2;
+                    cy1 = (item.prev.y1 + item.curr.y2) / 2;
+                    item.curr.x2 = Math.round((Math.cos(_angle) * (item.curr.x2 - cx1)) + (Math.sin(_angle) * (item.curr.y2 - cy1)) + cx1 + 1);
+                    item.curr.y2 = Math.round((-Math.sin(_angle) * (item.curr.x2 - cx1)) + (Math.cos(_angle) * (item.curr.y2 - cy1) + cy1 + 1));
+                    item.prev.x1 = Math.round((Math.cos(_angle) * (item.prev.x1 - cx1)) + (Math.sin(_angle) * (item.prev.y1 - cy1)) + cx1 + 1);
+                    item.prev.y1 = Math.round((-Math.sin(_angle) * (item.prev.x1 - cx1)) + (Math.cos(_angle) * (item.prev.y1 - cy1) + cy1 + 1));
+                }
+            });
+            this.ctx.clearRect(0, 0, 500, 500);
+            this.repaint();
+        }
+    }
+
+    scale(scal) {
+        if (scal) {
+            this.history.forEach((item) => {
+                let cx1, cy1;
+                cx1 = (item.prev.x1 + item.curr.x2) / 2;
+                cy1 = (item.prev.y1 + item.curr.y2) / 2;
+                item.prev.y1 -= cy1;
+                item.prev.y1 *= parseInt(scal, 10);
+                item.prev.y1 += cy1;
+                item.curr.y2 -= cy1;
+                item.curr.y2 *= parseInt(scal, 10);
+                item.curr.y2 += cy1;
+                item.prev.x1 -= cx1;
+                item.prev.x1 *= parseInt(scal, 10);
+                item.prev.x1 += cx1;
+                item.curr.x2 -= cx1;
+                item.curr.x2 *= parseInt(scal, 10);
+                item.curr.x2 += cx1;
+            });
+            this.ctx.clearRect(0, 0, 500, 500);
+            this.repaint();
+        }
+    }
+
+    reflect(y, x) {
+        this.history.forEach((item) => {
+            let cx1, cy1;
+            cx1 = (500)/2;
+            cy1 = (500)/2;
+            if (x) {
+                item.prev.y1 -= cy1;
+                item.prev.y1 *= -1;
+                item.prev.y1 += cy1;
+                item.curr.y2 -= cy1;
+                item.curr.y2 *= -1;
+                item.curr.y2 += cy1;
+            }
+            if (y) {
+                item.prev.x1 -= cx1;
+                item.prev.x1 *= -1;
+                item.prev.x1 += cx1;
+                item.curr.x2 -= cx1;
+                item.curr.x2 *= -1;
+                item.curr.x2 += cx1;
+
+            }
+        });
+        this.ctx.clearRect(0, 0, 500, 500);
+        this.repaint();
+    }
+
+    getX = () => event => {
+        this.setState({
+            xtra: event.target.value,
+        });
+    };
+    getY = () => event => {
+        this.setState({
+            ytra: event.target.value,
+        });
+    };
+    getR = () => event => {
+        this.setState({
+            rtra: event.target.value,
+        });
+    };
+    getS = () => event => {
+        this.setState({
+            stra: event.target.value,
+        });
+    };
 
     render() {
         return (
-            <div>
+            <div style={{display: 'flex'}}>
+                <div style={{display: 'flex', width: '30%', justifyContent: 'center', marginRight: '10px'}}>
+                    <div className="color-guide" style={{width: '100%', display: 'flex', flexFlow: 'column'}}>
+                        <div style={{width: '100%', display: 'flex'}}>
+                            <div style={{width: '70%', display: 'flex'}}>
+                                <TextField
+                                    id="x"
+                                    label="X"
+                                    type="number"
+                                    margin="normal"
+                                    value={this.state.xtra}
+                                    onChange={this.getX()}
+                                />
+                                <TextField
+                                    id="Y"
+                                    label="Y"
+                                    type="number"
+                                    margin="normal"
+                                    value={this.state.ytra}
+                                    onChange={this.getY()}
+                                />
+                            </div>
+                            <Button style={{width: '30%'}}
+                                    onClick={() => this.translate(this.state.xtra, this.state.ytra)} variant="raised"
+                                    color='#0D47A'>Translação</Button>
+                        </div>
+                        <div style={{display: 'flex'}}>
 
-                <div style={{display: 'flex', width: '100%', justifyContent: 'center'}}>
-                    <div className="color-guide" style={{display: 'flex', flexFlow: 'column'}}>
-                        <Button onClick={() => this.setEstado("Livre")} variant="raised" color='#0D47A'>Livre</Button>
-                        <Button onClick={() => this.setEstado("DDA")} variant="raised">DDA</Button>
-                        <Button onClick={() => this.setEstado("Bresenham")} variant="raised">Bresenham</Button>
-                        <Button onClick={() => this.setEstado("Circle")} variant="raised">Bresenham Circle</Button>
+                            <TextField
+                                id="R"
+                                label="R"
+                                type="number"
+                                margin="normal"
+                                value={this.state.rtra}
+                                onChange={this.getR()}
+                            />
+                            <Button onClick={() => this.rotate(this.state.rtra)} variant="raised">Rotaciona</Button>
+                        </div>
+                        <div style={{display: 'flex'}}>
+
+                            <TextField
+                                id="S"
+                                label="S"
+                                type="number"
+                                margin="normal"
+                                value={this.state.stra}
+                                onChange={this.getS()}
+                            />
+                            <Button onClick={() => this.scale(this.state.stra)} variant="raised">Escala</Button>
+                        </div>
+                        <Button onClick={() => this.reflect(true, false)} variant="raised">Reflexão no eixo Y</Button>
+                        <Button onClick={() => this.reflect(false, true)} variant="raised">reflexão no eixo x</Button>
+                        <Button onClick={() => this.reflect(true, true)} variant="raised">reflexão em ambos</Button>
+                        <Button onClick={() => this.clear()} variant="raised">Limpar</Button>
                     </div>
                 </div>
                 <canvas
