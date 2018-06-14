@@ -23,6 +23,7 @@ class Canvas extends Component {
 
     isPainting = false;
     line = [];
+    sequence = [];
     history = [];
     atual = [];
     stateVar = [];
@@ -65,12 +66,33 @@ class Canvas extends Component {
         }
     }
 
+    pegaSequencia() {
+        const h = this.history.slice();
+        return new Promise((resolve, reject) => {
+            let t = this.sequence.length;
+            console.log('h', h);
+            this.sequence.push(h);
+            this.sequence.forEach((item) => {
+                item = item.slice();
+                item.forEach((objeto) => {
+                    objeto = Object.assign({}, objeto);
+                });
+            });
+            if (t < this.sequence.length)
+                resolve(true);
+            else
+                resolve(false);
+        });
+    }
+
     endPaintEvent() {
         if (this.isPainting) {
             this.isPainting = false;
             this.stateVar = [];
-            this.history.push(this.atual);
-            console.log(this.atual);
+            this.pegaSequencia().then((resp) => {
+                this.history.push(this.atual);
+            });
+
             const {x2, y2} = this.atual.curr;
             let {x1, y1} = this.atual.prev;
             const dist = Math.round(Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - x2) * (y1 - x2)));
@@ -100,14 +122,17 @@ class Canvas extends Component {
     }
 
     clear() {
+        this.sequence.push(this.history.slice());
         this.ctx.clearRect(0, 0, 500, 500);
     }
 
     undo() {
         this.ctx.clearRect(0, 0, 500, 500);
-        this.history.pop();
-        this.repaint();
-
+        if (this.sequence.length > 0) {
+            this.history = this.sequence[this.sequence.length - 1];
+            this.sequence.pop();
+            this.repaint();
+        }
     }
 
     refresh() {
@@ -287,6 +312,7 @@ class Canvas extends Component {
     }
 
     repaint() {
+
         for (let i = 0; i < this.history.length; i++) {
             if (this.history[i].tipo === 'DDA') {
                 this.dda(this.history[i].prev.x1, this.history[i].prev.y1, this.history[i].curr.x2, this.history[i].curr.y2, this.history[i].color);
@@ -301,86 +327,100 @@ class Canvas extends Component {
 
     translate(x, y) {
         if (x && y) {
-            this.history.forEach((item, index) => {
-                item.prev.x1 = parseInt(item.prev.x1, 10) + parseInt(x, 10);
-                item.prev.y1 = parseInt(item.prev.y1, 10) + parseInt(y, 10);
-                item.curr.x2 = parseInt(item.curr.x2, 10) + parseInt(x, 10);
-                item.curr.y2 = parseInt(item.curr.y2, 10) + parseInt(y, 10);
+            console.log(this.sequence);
+            this.pegaSequencia().then((resp) => {
+                if (resp) {
+                    this.history.forEach((item, index) => {
+                        item.prev.x1 = parseInt(item.prev.x1, 10) + parseInt(x, 10);
+                        item.prev.y1 = parseInt(item.prev.y1, 10) + parseInt(y, 10);
+                        item.curr.x2 = parseInt(item.curr.x2, 10) + parseInt(x, 10);
+                        item.curr.y2 = parseInt(item.curr.y2, 10) + parseInt(y, 10);
+                    });
+                }
+                console.log('history', this.history);
+                this.ctx.clearRect(0, 0, 500, 500);
+                this.repaint();
             });
-            this.ctx.clearRect(0, 0, 500, 500);
-            this.repaint();
         }
     }
 
     rotate(angle) {
-        let _angle = (Math.PI / 180) * parseInt(angle, 10);
-        console.log(_angle);
-        if (angle) {
-            this.history.forEach((item) => {
-                let cx1, cy1;
-                if (item.tipo !== 'Circle') {
-                    cx1 = (item.prev.x1 + item.curr.x2) / 2;
-                    cy1 = (item.prev.y1 + item.curr.y2) / 2;
-                    item.curr.x2 = Math.round((Math.cos(_angle) * (item.curr.x2 - cx1)) + (Math.sin(_angle) * (item.curr.y2 - cy1)) + cx1 + 1);
-                    item.curr.y2 = Math.round((-Math.sin(_angle) * (item.curr.x2 - cx1)) + (Math.cos(_angle) * (item.curr.y2 - cy1) + cy1 + 1));
-                    item.prev.x1 = Math.round((Math.cos(_angle) * (item.prev.x1 - cx1)) + (Math.sin(_angle) * (item.prev.y1 - cy1)) + cx1 + 1);
-                    item.prev.y1 = Math.round((-Math.sin(_angle) * (item.prev.x1 - cx1)) + (Math.cos(_angle) * (item.prev.y1 - cy1) + cy1 + 1));
-                }
+        let mul = parseInt(angle, 10);
+        let angleRad = (Math.PI / 180) * mul;
+        console.log(angleRad);
+        if (angleRad) {
+            this.pegaSequencia().then((resp) => {
+                this.history.forEach((item) => {
+                    let cx1, cy1;
+                    if (item.tipo !== 'Circle') {
+                        cx1 = (item.prev.x1 + item.curr.x2) / 2;
+                        cy1 = (item.prev.y1 + item.curr.y2) / 2;
+                        item.curr.x2 = Math.cos(angleRad) * (item.curr.x2 - cx1) + Math.sin(angleRad) * (item.curr.y2 - cy1) + cx1;
+                        item.curr.y2 = -Math.sin(angleRad) * (item.curr.x2 - cx1) + Math.cos(angleRad) * (item.curr.y2 - cy1) + cy1;
+                        item.prev.x1 = Math.cos(angleRad) * (item.prev.x1 - cx1) + Math.sin(angleRad) * (item.prev.y1 - cy1) + cx1;
+                        item.prev.y1 = -Math.sin(angleRad) * (item.prev.x1 - cx1) + Math.cos(angleRad) * (item.prev.y1 - cy1) + cy1;
+                    }
+                });
+                this.ctx.clearRect(0, 0, 500, 500);
+                this.repaint();
             });
-            this.ctx.clearRect(0, 0, 500, 500);
-            this.repaint();
         }
     }
 
     scale(scal) {
         if (scal) {
-            this.history.forEach((item) => {
-                let cx1, cy1;
-                cx1 = (item.prev.x1 + item.curr.x2) / 2;
-                cy1 = (item.prev.y1 + item.curr.y2) / 2;
-                item.prev.y1 -= cy1;
-                item.prev.y1 *= parseInt(scal, 10);
-                item.prev.y1 += cy1;
-                item.curr.y2 -= cy1;
-                item.curr.y2 *= parseInt(scal, 10);
-                item.curr.y2 += cy1;
-                item.prev.x1 -= cx1;
-                item.prev.x1 *= parseInt(scal, 10);
-                item.prev.x1 += cx1;
-                item.curr.x2 -= cx1;
-                item.curr.x2 *= parseInt(scal, 10);
-                item.curr.x2 += cx1;
+            this.pegaSequencia().then((resp) => {
+                this.history.forEach((item) => {
+                    let cx1, cy1;
+                    cx1 = (item.prev.x1 + item.curr.x2) / 2;
+                    cy1 = (item.prev.y1 + item.curr.y2) / 2;
+                    item.prev.y1 -= cy1;
+                    item.prev.y1 *= parseInt(scal, 10);
+                    item.prev.y1 += cy1;
+                    item.curr.y2 -= cy1;
+                    item.curr.y2 *= parseInt(scal, 10);
+                    item.curr.y2 += cy1;
+                    item.prev.x1 -= cx1;
+                    item.prev.x1 *= parseInt(scal, 10);
+                    item.prev.x1 += cx1;
+                    item.curr.x2 -= cx1;
+                    item.curr.x2 *= parseInt(scal, 10);
+                    item.curr.x2 += cx1;
+                });
+                this.ctx.clearRect(0, 0, 500, 500);
+                this.repaint();
             });
-            this.ctx.clearRect(0, 0, 500, 500);
-            this.repaint();
         }
     }
 
     reflect(y, x) {
-        this.history.forEach((item) => {
-            let cx1, cy1;
-            cx1 = (500) / 2;
-            cy1 = (500) / 2;
-            if (x) {
-                item.prev.y1 -= cy1;
-                item.prev.y1 *= -1;
-                item.prev.y1 += cy1;
-                item.curr.y2 -= cy1;
-                item.curr.y2 *= -1;
-                item.curr.y2 += cy1;
-            }
-            if (y) {
-                item.prev.x1 -= cx1;
-                item.prev.x1 *= -1;
-                item.prev.x1 += cx1;
-                item.curr.x2 -= cx1;
-                item.curr.x2 *= -1;
-                item.curr.x2 += cx1;
+        this.pegaSequencia().then((resp) => {
+            this.history.forEach((item) => {
+                let cx1, cy1;
+                cx1 = (500) / 2;
+                cy1 = (500) / 2;
+                if (x) {
+                    item.prev.y1 -= cy1;
+                    item.prev.y1 *= -1;
+                    item.prev.y1 += cy1;
+                    item.curr.y2 -= cy1;
+                    item.curr.y2 *= -1;
+                    item.curr.y2 += cy1;
+                }
+                if (y) {
+                    item.prev.x1 -= cx1;
+                    item.prev.x1 *= -1;
+                    item.prev.x1 += cx1;
+                    item.curr.x2 -= cx1;
+                    item.curr.x2 *= -1;
+                    item.curr.x2 += cx1;
 
-            }
+                }
+            });
+            this.ctx.clearRect(0, 0, 500, 500);
+            this.repaint();
         });
-        this.ctx.clearRect(0, 0, 500, 500);
-        this.repaint();
+
     }
 
     getX = () => event => {
@@ -435,9 +475,9 @@ class Canvas extends Component {
                                     onChange={this.getY()}
                                 />
                             </div>
-                            <Button style={{width: '30%'}}
+                            <Button style={{width: '30%', backgroundColor: '#0D47A !important'}}
                                     onClick={() => this.translate(this.state.xtra, this.state.ytra)} variant="raised"
-                                    color='#0D47A'>Translação</Button>
+                            >Translação</Button>
                         </div>
                         <div style={{display: 'flex'}}>
 
