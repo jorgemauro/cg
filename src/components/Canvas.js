@@ -11,6 +11,7 @@ class Canvas extends Component {
         ytra: '',
         rtra: '',
         stra: '',
+        pixelFull: 1,
     };
 
     constructor(props) {
@@ -33,13 +34,13 @@ class Canvas extends Component {
         y = Math.round(y);
         this.ctx.fillStyle = color;
         this.stateVar.push({x: x, y: y, color: this.props.color});
-        this.ctx.fillRect(x, y, 1, 1);
+        this.ctx.fillRect(x, y, this.state.pixelFull, this.state.pixelFull);
     }
 
     pixelClear(x, y) {
         x = Math.round(x);
         y = Math.round(y);
-        this.ctx.clearRect(x, y, 1, 1);
+        this.ctx.clearRect(x, y, this.state.pixelFull, this.state.pixelFull);
     }
 
     onMouseDown({nativeEvent}) {
@@ -105,6 +106,7 @@ class Canvas extends Component {
     undo() {
         this.ctx.clearRect(0, 0, 500, 500);
         this.history.pop();
+        this.repaint();
 
     }
 
@@ -357,8 +359,8 @@ class Canvas extends Component {
     reflect(y, x) {
         this.history.forEach((item) => {
             let cx1, cy1;
-            cx1 = (500)/2;
-            cy1 = (500)/2;
+            cx1 = (500) / 2;
+            cy1 = (500) / 2;
             if (x) {
                 item.prev.y1 -= cy1;
                 item.prev.y1 *= -1;
@@ -399,6 +401,13 @@ class Canvas extends Component {
     getS = () => event => {
         this.setState({
             stra: event.target.value,
+        });
+    };
+    getTamanho = () => event => {
+        let px = parseInt(event.target.value, 10);
+
+        this.setState({
+            pixelFull: px,
         });
     };
 
@@ -454,10 +463,23 @@ class Canvas extends Component {
                             />
                             <Button onClick={() => this.scale(this.state.stra)} variant="raised">Escala</Button>
                         </div>
+
+                        <div style={{display: 'flex'}}>
+
+                            <TextField
+                                id="T"
+                                label="Traço(em pixel)"
+                                type="number"
+                                margin="normal"
+                                value={this.state.pixelFull}
+                                onChange={this.getTamanho()}
+                            />
+                        </div>
                         <Button onClick={() => this.reflect(true, false)} variant="raised">Reflexão no eixo Y</Button>
                         <Button onClick={() => this.reflect(false, true)} variant="raised">reflexão no eixo x</Button>
                         <Button onClick={() => this.reflect(true, true)} variant="raised">reflexão em ambos</Button>
                         <Button onClick={() => this.clear()} variant="raised">Limpar</Button>
+                        <Button onClick={() => this.undo()} variant="raised">Desfazer</Button>
                     </div>
                 </div>
                 <canvas
