@@ -357,10 +357,14 @@ class Canvas extends Component {
                     if (item.tipo !== 'Circle') {
                         cx1 = (item.prev.x1 + item.curr.x2) / 2;
                         cy1 = (item.prev.y1 + item.curr.y2) / 2;
-                        item.curr.x2 = Math.cos(angleRad) * (item.curr.x2 - cx1) + Math.sin(angleRad) * (item.curr.y2 - cy1) + cx1;
-                        item.curr.y2 = -Math.sin(angleRad) * (item.curr.x2 - cx1) + Math.cos(angleRad) * (item.curr.y2 - cy1) + cy1;
-                        item.prev.x1 = Math.cos(angleRad) * (item.prev.x1 - cx1) + Math.sin(angleRad) * (item.prev.y1 - cy1) + cx1;
-                        item.prev.y1 = -Math.sin(angleRad) * (item.prev.x1 - cx1) + Math.cos(angleRad) * (item.prev.y1 - cy1) + cy1;
+                        let nx2 = Math.cos(angleRad) * (item.curr.x2 - cx1) + Math.sin(angleRad) * (item.curr.y2 - cy1) + cx1;
+                        let ny2 = -Math.sin(angleRad) * (item.curr.x2 - cx1) + Math.cos(angleRad) * (item.curr.y2 - cy1) + cy1;
+                        let nx1 = Math.cos(angleRad) * (item.prev.x1 - cx1) + Math.sin(angleRad) * (item.prev.y1 - cy1) + cx1;
+                        let ny1 = -Math.sin(angleRad) * (item.prev.x1 - cx1) + Math.cos(angleRad) * (item.prev.y1 - cy1) + cy1;
+                        item.curr.x2 = nx2;
+                        item.curr.y2 = ny2;
+                        item.prev.x1 = nx1;
+                        item.prev.y1 = ny1;
                     }
                 });
                 this.ctx.clearRect(0, 0, 500, 500);
