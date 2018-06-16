@@ -123,6 +123,8 @@ class Canvas extends Component {
 
     clear() {
         this.sequence.push(this.history.slice());
+        this.sequence = [];
+        this.history = [];
         this.ctx.clearRect(0, 0, 500, 500);
     }
 
