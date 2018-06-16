@@ -29,7 +29,7 @@ class Canvas extends Component {
     stateVar = [];
     initialstate = [];
     prevPos = {offsetX: 0, offsetY: 0};
-
+//funcao para printar o pixel no na tela
     pixel(x, y, color) {
         x = Math.round(x);
         y = Math.round(y);
@@ -37,41 +37,39 @@ class Canvas extends Component {
         this.stateVar.push({x: x, y: y, color: this.props.color});
         this.ctx.fillRect(x, y, this.state.pixelFull, this.state.pixelFull);
     }
-
+// funcao par aprintar o pixel branco na tela
     pixelClear(x, y) {
         x = Math.round(x);
         y = Math.round(y);
         this.ctx.clearRect(x, y, this.state.pixelFull, this.state.pixelFull);
     }
-
+//funcao que recebe o evento de clique
     onMouseDown({nativeEvent}) {
         const {offsetX, offsetY} = nativeEvent;
         this.isPainting = true;
         this.ctx.save();
         this.prevPos = {offsetX, offsetY};
     }
-
+// funcao que recebe o evento de movimentacao do mouse
     onMouseMove({nativeEvent}) {
         if (this.isPainting) {
             const {offsetX, offsetY} = nativeEvent;
             const offSetData = {offsetX, offsetY};
-            // Set the start and stop position of the paint event.
             const positionData = {
                 start: {...this.prevPos},
                 stop: {...offSetData},
             };
-            // Add the position to the line array
             this.line = this.line.concat(positionData);
             this.paint(this.prevPos, offSetData);
         }
     }
-
+//funcao que pega a seque cia de acoes
     pegaSequencia() {
         const h = this.history.slice();
         return new Promise((resolve, reject) => {
             let t = this.sequence.length;
-            console.log('h', h);
             this.sequence.push(h);
+            console.log(this.sequence);
             this.sequence.forEach((item) => {
                 item = item.slice();
                 item.forEach((objeto) => {
@@ -84,7 +82,7 @@ class Canvas extends Component {
                 resolve(false);
         });
     }
-
+//funcao que verifica se parou de se desenhar
     endPaintEvent() {
         if (this.isPainting) {
             this.isPainting = false;
@@ -120,14 +118,14 @@ class Canvas extends Component {
             }
         }
     }
-
+// funcao limpa a tela e o historico
     clear() {
         this.sequence.push(this.history.slice());
         this.sequence = [];
         this.history = [];
         this.ctx.clearRect(0, 0, 500, 500);
     }
-
+// funcao de desfazer
     undo() {
         this.ctx.clearRect(0, 0, 500, 500);
         if (this.sequence.length > 0) {
@@ -136,7 +134,7 @@ class Canvas extends Component {
             this.repaint();
         }
     }
-
+//funcao que limpa os pixel que foram retirados na movimentacao
     refresh() {
         this.stateVar.forEach((item) => {
             if (this.initialstate.length === 0 || this.initialstate.find((item2) => {
@@ -145,10 +143,10 @@ class Canvas extends Component {
                 this.pixelClear(item.x, item.y);
             }
         });
+        this.repaint();
         this.ctx.fillStyle = this.props.color;
-        // this.ctx.clearRect(0, 0, 500, 500);
     }
-
+//funcao que pinta as formas
     paint(prevPos, currPos) {
         const {offsetX, offsetY} = currPos;
         let {offsetX: x, offsetY: y} = prevPos;
@@ -178,7 +176,7 @@ class Canvas extends Component {
             this.Circle(x, y, dist, this.props.color);
         }
     }
-
+/////////////////////Funcoes de calculos para criacao de linhas e circuloe///////////////////////////
     bresenham(x1, y1, x2, y2, color) {
         let dx = x2 - x1;
         let dy = y2 - y1;
@@ -269,6 +267,39 @@ class Canvas extends Component {
         }
     }
 
+    CircleAnti(xc, yc, r, color) {
+        let x = 0;
+        let y = r;
+        let p = 3 - 2 * r;
+
+        this.pixel(xc + x, yc + y, color);
+        this.pixel(xc - x, yc + y, color);
+        this.pixel(xc + x, yc - y, color);
+        this.pixel(xc - x, yc - y, color);
+        this.pixel(xc + y, yc + x, color);
+        this.pixel(xc - y, yc + x, color);
+        this.pixel(xc + y, yc - x, color);
+        this.pixel(xc - y, yc - x, color);
+
+        while (x < y) {
+            if (p < 0) p += 4 * x + 6;
+            else {
+                p += 4 * (x - y) + 10;
+                y--;
+            }
+            x++;
+
+            this.pixel(xc + x, yc + y, color);
+            this.pixel(xc - x, yc + y, color);
+            this.pixel(xc + x, yc - y, color);
+            this.pixel(xc - x, yc - y, color);
+            this.pixel(xc + y, yc + x, color);
+            this.pixel(xc - y, yc + x, color);
+            this.pixel(xc + y, yc - x, color);
+            this.pixel(xc - y, yc - x, color);
+        }
+    }
+
     Circle(xc, yc, r, color) {
         let x = 0;
         let y = r;
@@ -302,8 +333,8 @@ class Canvas extends Component {
         }
     }
 
+/////////////////////Fim das funcoes ///////////////////////////
     componentDidMount() {
-        // Here we set up the properties of the canvas element.
         this.canvas.width = 500;
         this.canvas.height = 500;
         this.ctx = this.canvas.getContext('2d');
@@ -312,7 +343,7 @@ class Canvas extends Component {
         this.ctx.lineWidth = 5;
         this.ctx.save();
     }
-
+//funcao responsavel por repintar todos os objetos na tela
     repaint() {
 
         for (let i = 0; i < this.history.length; i++) {
@@ -329,7 +360,6 @@ class Canvas extends Component {
 
     translate(x, y) {
         if (x && y) {
-            console.log(this.sequence);
             this.pegaSequencia().then((resp) => {
                 if (resp) {
                     this.history.forEach((item, index) => {
@@ -339,7 +369,6 @@ class Canvas extends Component {
                         item.curr.y2 = parseInt(item.curr.y2, 10) + parseInt(y, 10);
                     });
                 }
-                console.log('history', this.history);
                 this.ctx.clearRect(0, 0, 500, 500);
                 this.repaint();
             });
@@ -349,7 +378,6 @@ class Canvas extends Component {
     rotate(angle) {
         let mul = parseInt(angle, 10);
         let angleRad = (Math.PI / 180) * mul;
-        console.log(angleRad);
         if (angleRad) {
             this.pegaSequencia().then((resp) => {
                 this.history.forEach((item) => {
@@ -398,7 +426,6 @@ class Canvas extends Component {
             });
         }
     }
-
     reflect(y, x) {
         this.pegaSequencia().then((resp) => {
             this.history.forEach((item) => {
@@ -427,6 +454,64 @@ class Canvas extends Component {
             this.repaint();
         });
 
+    }
+    antiAliasing() {
+        for (let i = 0; i < this.history.length; i++) {
+            if (this.history[i].tipo === 'Circle') {
+                this.ctx.clearRect(0, 0, 500, 500);
+                const dist = Math.round(Math.sqrt((this.history[i].prev.x1 - this.history[i].curr.x2) * (this.history[i].prev.x1 - this.history[i].curr.x2) + (this.history[i].prev.x1 - this.history[i].curr.y2) * (this.history[i].prev.y1 - this.history[i].curr.y2)));
+                this.antialisingCircle(this.history[i].prev.x1, this.history[i].prev.y1, dist, this.history[i].color);
+            }else{
+                this.antialisingLine(this.history[i].prev.x1,this.history[i].prev.y1, this.history[i].curr.x2,this.history[i].curr.y2, this.history[i].color);
+            }
+        }
+    }
+
+    antialisingCircle(cx, cy, dist, color) {
+        let centerX = cx;
+        let centerY = cy;
+        let a = (dist) / 2;
+        let b = (dist) / 2;
+        let tickness = 1.5 / a;
+        for (let x = 0; x <= a + 1; x++)
+            for (let y = 0; y <= b + 1; y++) {
+                let one = x * x / (a * a) + y * y / (b * b);
+                let error = (one - 1) / tickness;
+                if (error > 1)
+                    break;
+                if (error < -1)
+                    continue;
+                this.pixel(centerX + x, centerY + y, color);
+                this.pixel(centerX - x, centerY + y, color);
+                this.pixel(centerX - x, centerY - y, color);
+                this.pixel(centerX + x, centerY - y, color);
+            }
+
+    }
+
+    antialisingLine(x0, y0, x1, y1, color) {
+        let dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+        let dy = Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+        let err = dx - dy, e2, x2;
+        let ed = dx + dy === 0 ? 1 : Math.sqrt(dx * dx + dy * dy);
+
+        for (; ;) {                                         /* pixel loop */
+            this.pixel(x0, y0, 255 * Math.abs(err - dx + dy) / ed);
+            e2 = err;
+            x2 = x0;
+            if (2 * e2 >= -dx) {                                    /* x step */
+                if (x0 === x1) break;
+                if (e2 + dy < ed) this.pixel(x0, y0 + sy, 255 * (e2 + dy) / ed);
+                err -= dy;
+                x0 += sx;
+            }
+            if (2 * e2 <= dy) {                                     /* y step */
+                if (y0 === y1) break;
+                if (dx - e2 < ed) this.pixel(x2 + sx, y0, 255 * (dx - e2) / ed);
+                err += dx;
+                y0 += sy;
+            }
+        }
     }
 
     getX = () => event => {
@@ -462,6 +547,7 @@ class Canvas extends Component {
             <div style={{display: 'flex'}}>
                 <div style={{display: 'flex', width: '30%', justifyContent: 'center', marginRight: '10px'}}>
                     <div className="color-guide" style={{width: '100%', display: 'flex', flexFlow: 'column'}}>
+                        <div><b>Transformações</b></div>
                         <div style={{width: '100%', display: 'flex'}}>
                             <div style={{width: '70%', display: 'flex'}}>
                                 <TextField
@@ -524,6 +610,7 @@ class Canvas extends Component {
                         <Button onClick={() => this.reflect(true, false)} variant="raised">Reflexão no eixo Y</Button>
                         <Button onClick={() => this.reflect(false, true)} variant="raised">reflexão no eixo x</Button>
                         <Button onClick={() => this.reflect(true, true)} variant="raised">reflexão em ambos</Button>
+                        <Button onClick={() => this.antiAliasing()} variant="raised">Antiliazing</Button>
                         <Button onClick={() => this.clear()} variant="raised">Limpar</Button>
                         <Button onClick={() => this.undo()} variant="raised">Desfazer</Button>
                     </div>
